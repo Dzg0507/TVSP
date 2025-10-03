@@ -25,6 +25,7 @@ router = APIRouter(prefix="/users", tags=["Users & Authentication"])
 
 # In-memory storage for development
 users_db = {}
+users_by_id = {}
 sessions_db = {}
 
 
@@ -107,6 +108,7 @@ def register_user(user: UserCreate):
     
     # Store user in memory
     users_db[user.email] = new_user
+    users_by_id[user_id] = new_user
     
     # Return user data
     user_public = UserPublic(
@@ -156,12 +158,7 @@ def login_for_access_token(
 @router.get("/me", response_model=UserPublic)
 def get_current_user_info(current_user = Depends(get_current_user)):
     """Get current user information."""
-    # Find user in our in-memory storage
-    user_data = None
-    for email, data in users_db.items():
-        if data["id"] == str(current_user.id):
-            user_data = data
-            break
+    user_data = users_by_id.get(str(current_user.id))
     
     if not user_data:
         raise HTTPException(
