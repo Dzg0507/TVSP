@@ -64,12 +64,9 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         raise credentials_exception
     
     # Find user in our in-memory storage
-    from api.users import users_db
-    user_data = None
-    for email, data in users_db.items():
-        if data["id"] == user_id_str:
-            user_data = data
-            break
+    from api.users import users_by_id
+    
+    user_data = users_by_id.get(user_id_str)
     
     if not user_data:
         raise credentials_exception
