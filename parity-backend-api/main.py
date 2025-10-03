@@ -14,8 +14,6 @@ import json
 from api import users_router, partners_router
 
 # Create FastAPI application
-print("<<<<<<<<<< RUNNING THE CORRECT MAIN.PY FILE - BUILD V4 >>>>>>>>>>")
-
 app = FastAPI(
     title="Parity API - User & Relationship Management",
     description="A robust FastAPI backend for managing users, authentication, and partner linking.",
