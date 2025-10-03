@@ -1,0 +1,59 @@
+services:
+  ai-coaching:
+    build: ./parity-ai-coaching
+    ports:
+      - "8001:8001"
+
+  social-affirmation:
+    build: ./parity-social-affirmation
+    ports:
+      - "4000:4000"
+
+  relationship-analytics:
+    build: ./parity-relationship-analytics
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/parity_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  content-moderation:
+    build: ./parity-content-moderation
+    ports:
+      - "8003:8003"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/parity_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  notification-service:
+    build: ./parity-notification-service
+    ports:
+      - "8004:8004"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/parity_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=parity_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d parity_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

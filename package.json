@@ -1,0 +1,22 @@
+{
+  "name": "parity-project",
+  "version": "1.0.0",
+  "description": "Parity - Relationship Communication App - Full Stack",
+  "scripts": {
+    "start": "npm run start:backend && npm run start:frontend",
+    "start:backend": "docker-compose -f docker-compose.backend.yml up --build",
+    "start:frontend": "cd parity-app && npm start",
+    "start:frontend-services": "docker-compose -f docker-compose.frontend.yml up --build",
+    "start:all": "docker-compose up --build",
+    "stop": "docker-compose -f docker-compose.backend.yml down && docker-compose -f docker-compose.frontend.yml down",
+    "stop:backend": "docker-compose -f docker-compose.backend.yml down",
+    "stop:frontend": "docker-compose -f docker-compose.frontend.yml down",
+    "logs:backend": "docker-compose -f docker-compose.backend.yml logs -f",
+    "logs:frontend": "docker-compose -f docker-compose.frontend.yml logs -f",
+    "dev": "npm run start:backend & npm run start:frontend",
+    "clean": "docker-compose -f docker-compose.backend.yml down -v && docker-compose -f docker-compose.frontend.yml down -v"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
