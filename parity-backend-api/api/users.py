@@ -371,13 +371,6 @@ def reset_password(request: ResetPasswordRequest):
             detail="Password must be at least 8 characters long."
         )
     
-    # For testing, just validate the password
-    if len(request.new_password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters long."
-        )
-    
     # Remove used token
     del password_reset_tokens[request.token]
     
