@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from core import settings, verify_password, get_password_hash, create_access_token
 from core.security import get_current_user
+from core.database import get_db, DbDependency
 from models.user import User
 from schemas.user import UserCreate, UserPublic
 from schemas.auth import Token
@@ -22,11 +23,6 @@ import uuid
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/users", tags=["Users & Authentication"])
-
-# In-memory storage for development
-users_db = {}
-users_by_id = {}
-sessions_db = {}
 
 
 # Data models for settings and profile
@@ -80,96 +76,64 @@ def create_user(db, user: UserCreate) -> User:
 
 
 @router.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
-def register_user(user: UserCreate):
+def register_user(user: UserCreate, db: DbDependency):
     """
-    Register a new user with real data storage
+    Register a new user with database storage
     """
-    print(f"Registration attempt received: email={user.email}, password_length={len(user.password) if user.password else 0}")
-    
-    # Check if user already exists
-    if user.email in users_db:
+    existing_user = get_user_by_email(db, user.email)
+    if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
     
-    # Create new user
-    user_id = str(uuid.uuid4())
-    hashed_password = get_password_hash(user.password)
+    db_user = create_user(db, user)
     
-    new_user = {
-        "id": user_id,
-        "email": user.email,
-        "hashed_password": hashed_password,
-        "created_at": datetime.now(timezone.utc),
-        "partner_id": None,
-        "is_active": True
-    }
-    
-    # Store user in memory
-    users_db[user.email] = new_user
-    users_by_id[user_id] = new_user
-    
-    # Return user data
-    user_public = UserPublic(
-        id=user_id,
-        email=user.email,
-        partner_id=None
+    return UserPublic(
+        id=str(db_user.id),
+        email=db_user.email,
+        partner_id=str(db_user.partner_id) if db_user.partner_id else None
     )
-    
-    print(f"User registered successfully: {user_id}")
-    return user_public
 
 
 @router.post("/login", response_model=Token)
 def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: DbDependency
 ):
     """
-    Login user with real authentication
+    Login user with database authentication
     """
     print(f"Login attempt received: email={form_data.username}, password_length={len(form_data.password) if form_data.password else 0}")
     
-    # Check if user exists
-    if form_data.username not in users_db:
+    user = get_user_by_email(db, form_data.username)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user_data = users_db[form_data.username]
-    
-    # Verify password
-    if not verify_password(form_data.password, user_data["hashed_password"]):
+    if not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create access token
-    access_token = create_access_token(data={"user_id": user_data["id"]})
+    access_token = create_access_token(data={"user_id": str(user.id)})
     
     print(f"Login successful for: {form_data.username}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.get("/me", response_model=UserPublic)
-def get_current_user_info(current_user = Depends(get_current_user)):
+def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user information."""
-    user_data = users_by_id.get(str(current_user.id))
-    
-    if not user_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
     return UserPublic(
-        id=user_data["id"],
-        email=user_data["email"],
-        partner_id=user_data["partner_id"]
+        id=str(current_user.id),
+        email=current_user.email,
+        partner_id=str(current_user.partner_id) if current_user.partner_id else None
     )
 
 

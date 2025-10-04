@@ -45,9 +45,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: DbDependency
+):
     """Dependency to get the current authenticated user from a JWT."""
     from schemas.auth import TokenData
+    from models.user import User
+    import uuid
     
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -56,30 +61,23 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id_str: str = payload.get("user_id")
+        user_id_str: str | None = payload.get("user_id")
         if user_id_str is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id_str)
     except (JWTError, ValueError):
         raise credentials_exception
     
-    # Find user in our in-memory storage
-    from api.users import users_by_id
-    
-    user_data = users_by_id.get(user_id_str)
-    
-    if not user_data:
+    try:
+        user_id = uuid.UUID(user_id_str)
+    except ValueError:
         raise credentials_exception
     
-    # Return user object
-    class User:
-        def __init__(self, user_data):
-            self.id = user_data["id"]
-            self.email = user_data["email"]
-            self.created_at = user_data["created_at"]
-            self.partner_id = user_data["partner_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise credentials_exception
     
-    return User(user_data)
+    return user
 
 
 # Dependency for current authenticated user
