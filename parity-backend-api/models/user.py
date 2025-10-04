@@ -3,12 +3,12 @@ User database model.
 """
 
 import uuid
+import hashlib
 from datetime import datetime
 from sqlalchemy import Column, String, ForeignKey, DateTime
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from core.database import Base
+from core.database import Base, UUID
 from core.security import generate_link_code
 
 
@@ -32,3 +32,8 @@ class User(Base):
         primaryjoin="User.partner_id == User.id",
         backref="partner_of"
     )
+
+    @property
+    def anonymous_id(self) -> str:
+        """Generate a consistent anonymous ID for social posts."""
+        return hashlib.sha256(str(self.id).encode()).hexdigest()[:16]

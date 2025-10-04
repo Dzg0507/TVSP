@@ -12,6 +12,9 @@ import json
 
 # from core import Base, engine  # Skip database for now
 from api import users_router, partners_router
+from api.social import router as social_router
+from api.coaching import router as coaching_router
+from api.affirmations import router as affirmations_router
 
 # Create FastAPI application
 app = FastAPI(
@@ -45,16 +48,6 @@ app.add_middleware(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     print(f"Request: {request.method} {request.url}")
-    print(f"Headers: {dict(request.headers)}")
-    
-    # Log request body for POST requests
-    if request.method == "POST":
-        try:
-            body = await request.body()
-            if body:
-                print(f"Request body: {body.decode('utf-8')}")
-        except Exception as e:
-            print(f"Error reading request body: {e}")
     
     response = await call_next(request)
     print(f"Response status: {response.status_code}")
@@ -63,6 +56,9 @@ async def log_requests(request: Request, call_next):
 # Include API routers
 app.include_router(users_router)
 app.include_router(partners_router)
+app.include_router(social_router)
+app.include_router(coaching_router)
+app.include_router(affirmations_router)
 
 # Root endpoints
 @app.get("/", tags=["Root"])
